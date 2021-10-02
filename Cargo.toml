@@ -7,5 +7,14 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+fltk = "1.2.4"
 image = "0.23.14"
 imageproc = "0.22.0"
+
+[lib]
+name = "retro_filter_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "retro_filter"
+path ="src/bin/bin.rs"
