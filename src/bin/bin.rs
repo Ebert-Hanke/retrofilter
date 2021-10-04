@@ -1,10 +1,9 @@
 use fltk::{
-    app, button,
-    dialog::file_chooser,
+    app, button, dialog,
     enums::{Color, ColorDepth, FrameType},
     frame,
     frame::Frame,
-    image::{self as fl_image},
+    image as fl_image,
     prelude::*,
     valuator,
     valuator::Slider,
@@ -14,13 +13,17 @@ use fltk_theme::{color_themes, ColorTheme, ThemeType, WidgetTheme};
 use image::{io::Reader as ImageReader, DynamicImage};
 use retro_filter_lib::preview;
 
+#[derive(Debug, Clone, Copy)]
+pub enum Message {
+    OpenFile,
+    ChangeRadius,
+    ChangeOpacity,
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // dummy image
-    let image = ImageReader::open("/Users/halo/desktop/image.jpg")
-        .unwrap()
-        .decode()
-        .unwrap();
-    let thumbnail = image.thumbnail(400, 400);
+    // initial data
+    let mut thumbnail = None;
+
     // setup fltk gui
     // theme
     let app = app::App::default().with_scheme(app::Scheme::Gtk);
@@ -35,6 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     win.set_color(Color::BackGround);
     win.make_resizable(true);
     // define components
+    let mut btn_open_file = button::Button::new(10, 430, 100, 20, "Open File");
     let mut frm = frame::Frame::new(10, 10, 400, 400, None);
     frm.set_frame(FrameType::BorderBox);
     frm.set_color(Color::Dark1);
@@ -49,29 +53,51 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // end setup and display window
     win.end();
     win.show();
-    // functionality
-    draw_image(&thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity);
-    v_slider_radius.set_callback({
-        let v_slider_radius = v_slider_radius.clone();
-        let v_slider_opacity = v_slider_opacity.clone();
-        let thumbnail = thumbnail.clone();
-        let mut frm = frm.clone();
-        move |_| {
-            draw_image(&thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity);
-            app::redraw();
+
+    // event handling
+    let (s, r) = app::channel::<Message>();
+    btn_open_file.emit(s, Message::OpenFile);
+    v_slider_radius.emit(s, Message::ChangeRadius);
+    v_slider_opacity.emit(s, Message::ChangeOpacity);
+
+    // event loop for messages
+    while app.wait() {
+        if let Some(msg) = r.recv() {
+            match msg {
+                // functionality
+                Message::OpenFile => {
+                    let file = dialog::file_chooser(
+                        "Select Input File",
+                        "*.{jpg,jpeg,png,tif,bmp}",
+                        ".",
+                        true,
+                    )
+                    .unwrap();
+                    let image = ImageReader::open(file).unwrap().decode().unwrap();
+                    thumbnail = Some(image.thumbnail(400, 400));
+
+                    // draw initial view
+                    if let Some(thumbnail) = &thumbnail {
+                        draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity);
+                        app::redraw();
+                    }
+                }
+                Message::ChangeRadius => {
+                    if let Some(thumbnail) = &thumbnail {
+                        draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity);
+                        app::redraw();
+                    }
+                }
+                Message::ChangeOpacity => {
+                    if let Some(thumbnail) = &thumbnail {
+                        draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity);
+                        app::redraw();
+                    }
+                }
+            }
         }
-    });
-    v_slider_opacity.set_callback({
-        let v_slider_radius = v_slider_radius.clone();
-        let v_slider_opacity = v_slider_opacity.clone();
-        let thumbnail = thumbnail.clone();
-        let mut frm = frm.clone();
-        move |_| {
-            draw_image(&thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity);
-            app::redraw();
-        }
-    });
-    app.run()?;
+    }
+
     Ok(())
 }
 
