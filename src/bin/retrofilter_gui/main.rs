@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     v_slider_radius.set_step(1.0, 1);
     v_slider_radius.set_value(150.0);
     let mut v_slider_opacity = valuator::NiceSlider::new(480, 10, 20, 400, "Opacity");
-    v_slider_opacity.set_range(55.0, 255.0);
+    v_slider_opacity.set_range(1.0, 255.0);
     v_slider_opacity.set_step(1.0, 1);
     v_slider_opacity.set_value(100.0);
     // end setup and display window
