@@ -2,11 +2,16 @@ use image::{
     imageops::{blur, overlay},
     DynamicImage, GenericImageView, ImageBuffer, Rgb, Rgba, RgbaImage,
 };
-use imageproc::drawing::draw_filled_circle_mut;
+use imageproc::{drawing::draw_filled_circle_mut, filter::gaussian_blur_f32};
 
-pub fn preview(image: &DynamicImage, radius: u32, opacity: u8) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+pub fn process_image(
+    image: &DynamicImage,
+    radius: u32,
+    opacity: u8,
+    preview_mode: bool,
+) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     let (width, height) = image.dimensions();
-    let vignette = create_vignette(width, height, radius, opacity, true);
+    let vignette = create_vignette(width, height, radius, opacity, preview_mode);
     let mut base_image = image.clone();
     overlay(&mut base_image, &vignette, 0, 0);
     base_image.to_rgb8()
@@ -17,7 +22,7 @@ pub fn create_vignette(
     height: u32,
     radius: u32,
     opacity: u8,
-    preview: bool,
+    preview_mode: bool,
 ) -> DynamicImage {
     let (center_x, center_y) = ((width / 2) as i32, (height / 2) as i32);
     // create canvas with given opacity
@@ -55,7 +60,7 @@ pub fn create_vignette(
         .into_iter()
         .for_each(|i| {
             let alpha = (alpha_step * i as f32).round() as u8;
-            println!("alpha:{}, radius:{}, i:{}", alpha, inner_radius + i, i);
+            //            println!("alpha:{}, radius:{}, i:{}", alpha, inner_radius + i, i);
             draw_filled_circle_mut(
                 &mut canvas,
                 (center_x, center_y),
@@ -64,10 +69,12 @@ pub fn create_vignette(
             );
         });
     // blur to make gradient smooter
-    if preview {
+    if preview_mode {
         canvas = blur(&canvas, 1.0);
     } else {
-        canvas = blur(&canvas, 10.0);
+        println!("No preview");
+        canvas = blur(&canvas, 1.0);
+        println!("Blur ran");
     }
     DynamicImage::ImageRgba8(canvas)
 }

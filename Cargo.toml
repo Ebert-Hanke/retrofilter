@@ -12,10 +12,10 @@ fltk-theme = "0.2.2"
 image = "0.23.14"
 imageproc = "0.22.0"
 
-[lib]
-name = "retro_filter_lib"
-path = "src/lib.rs"
+# [lib]
+# name = "retro_filter_lib"
+# path = "src/lib.rs"
 
-[[bin]]
-name = "retro_filter"
-path ="src/bin/bin.rs"
+# [[bin]]
+# name = "retro_filter"
+# path ="src/bin/main.rs"
