@@ -1,6 +1,7 @@
 use image::{DynamicImage, GrayImage, Luma};
 use imageproc::drawing::draw_filled_circle_mut;
 use rand::Rng;
+use rayon::prelude::*;
 
 pub fn create_vignette(width: u32, height: u32, radius: u32) -> DynamicImage {
     let (center_x, center_y) = ((width / 2) as i32, (height / 2) as i32);
@@ -36,14 +37,14 @@ pub fn create_vignette(width: u32, height: u32, radius: u32) -> DynamicImage {
             );
         });
     // add noise to gradient
-    let mut rng = rand::thread_rng();
-    canvas.pixels_mut().into_iter().for_each(|px| {
-        if px[0] != 0u8 && px[0] != 255u8 {
-            let random: i32 = px[0] as i32 + rng.gen_range(-10..10);
+    canvas.par_iter_mut().for_each(|p| {
+        if *p != 0 && *p != 255 {
+            let mut rng = rand::thread_rng();
+            let random: i32 = *p as i32 + rng.gen_range(-10..10);
             if random < 0 {
-                px[0] = 0
+                *p = 0
             } else {
-                px[0] = random.clamp(0, 255) as u8
+                *p = random.clamp(0, 255) as u8
             }
         }
     });
