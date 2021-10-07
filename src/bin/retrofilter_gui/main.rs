@@ -62,9 +62,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     v_slider_radius.set_step(1.0, 1);
     v_slider_radius.set_value(150.0);
     let mut v_slider_opacity = valuator::NiceSlider::new(480, 10, 20, 400, "Opacity");
-    v_slider_opacity.set_range(1.0, 255.0);
-    v_slider_opacity.set_step(1.0, 1);
-    v_slider_opacity.set_value(100.0);
+    v_slider_opacity.set_range(0.0, 1.0);
+    v_slider_opacity.set_step(0.1, 1);
+    v_slider_opacity.set_value(0.5);
     // end setup and display window
     win.end();
     win.show();
@@ -105,10 +105,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let processed_image = process_image(
                             image_data,
                             scaled_radius.round() as u32,
-                            *&v_slider_opacity.value() as u8,
+                            *&v_slider_opacity.value() as f32,
                             false,
                         );
-                        image_save(processed_image, 20, save_path);
+                        image_save(processed_image, 80, save_path);
                     }
                 }
                 Message::ChangeRadius => {
@@ -139,7 +139,7 @@ fn draw_image(
     let preview = process_image(
         thumbnail,
         v_slider_radius.value() as u32,
-        v_slider_opacity.value() as u8,
+        v_slider_opacity.value() as f32,
         true,
     );
     let (w, h) = preview.dimensions();

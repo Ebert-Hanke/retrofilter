@@ -39,7 +39,7 @@ pub fn create_vignette(width: u32, height: u32, radius: u32) -> DynamicImage {
     let mut rng = rand::thread_rng();
     canvas.pixels_mut().into_iter().for_each(|px| {
         if px[0] != 0u8 && px[0] != 255u8 {
-            let random: i32 = px[0] as i32 + rng.gen_range(-1..1);
+            let random: i32 = px[0] as i32 + rng.gen_range(-10..10);
             if random < 0 {
                 px[0] = 0
             } else {
