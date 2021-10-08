@@ -13,7 +13,7 @@ use fltk::{
     valuator::NiceSlider,
     window,
 };
-use fltk_theme::{color_themes, ColorTheme, ThemeType, WidgetTheme};
+use fltk_theme::{ThemeType, WidgetTheme};
 use image::{io::Reader as ImageReader, DynamicImage, GenericImageView, ImageBuffer, Rgb};
 use retro_filter::process_image;
 
@@ -178,6 +178,6 @@ fn get_preview_scale(image_data: &DynamicImage, preview_size: &u32) -> f64 {
     longer_axis as f64 / *preview_size as f64
 }
 
-pub fn set_progress(progress: f64, progress_bar: &mut Progress) {
+fn set_progress(progress: f64, progress_bar: &mut Progress) {
     progress_bar.set_value(progress_bar.value() + progress);
 }
