@@ -126,14 +126,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Message::SaveFile => {
                     save_chooser.show();
                     let save_path = save_chooser.filename();
-                    match &mut processed_image {
-                        Some(image) => {
-                            image_save(image.clone(), 80, save_path);
-                            processed_image = None;
-                            btn_save_file.deactivate();
-                            app::redraw();
+                    if save_path.file_name().is_some() {
+                        match &mut processed_image {
+                            Some(image) => {
+                                image_save(image.clone(), 80, save_path);
+                                processed_image = None;
+                                btn_save_file.deactivate();
+                                app::redraw();
+                            }
+                            None => (),
                         }
-                        None => (),
                     }
                 }
                 Message::ChangeRadius => {
