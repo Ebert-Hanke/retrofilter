@@ -23,10 +23,14 @@ pub fn image_save(image_data: ImageBuffer<Rgb<u8>, Vec<u8>>, quality: u8, path: 
     let file = File::create(&save_path).unwrap();
     let buffer = &mut BufWriter::new(file);
     let mut encoder = JpegEncoder::new_with_quality(buffer, quality);
-    encoder.encode(
+    let encoding = encoder.encode(
         &image_data,
         image_data.dimensions().0,
         image_data.dimensions().1,
         ColorType::Rgb8,
     );
+    match encoding {
+        Ok(_) => (),
+        Err(err) => panic!("Encoding went wrong:{}", err),
+    }
 }
