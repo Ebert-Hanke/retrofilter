@@ -2,13 +2,13 @@ mod filehandling;
 use filehandling::{image_open, image_save};
 use fltk::{
     app,
-    button,
+    button::{self, RadioLightButton},
     dialog::{self, FileDialogOptions},
-    enums::{Color, ColorDepth, FrameType},
+    enums::{Align, Color, ColorDepth, FrameType},
     frame,
     frame::Frame,
+    group::Group,
     image as fl_image,
-    // misc::Progress,
     prelude::*,
     valuator,
     valuator::NiceSlider,
@@ -37,17 +37,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // setup fltk gui
     // theme
     let app = app::App::default().with_scheme(app::Scheme::Gtk);
-    //let theme = ColorTheme::from_colormap(color_themes::GRAY_THEME);
-    //theme.apply();
+
+    let (s, r) = app::channel::<Message>();
+
     let widget_theme = WidgetTheme::new(ThemeType::AquaClassic);
     widget_theme.apply();
+
     // define window
     let mut win = window::Window::default()
-        .with_size(600, 600)
+        .with_size(900, 600)
         .center_screen()
         .with_label("Retro Filter");
     win.set_color(Color::BackGround);
     win.make_resizable(true);
+
     // define components
     let mut input_chooser = dialog::NativeFileChooser::new(dialog::FileDialogType::BrowseFile);
     input_chooser.set_option(dialog::FileDialogOptions::Preview);
@@ -68,15 +71,55 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut preview_frame =
         frame::Frame::new(10, 10, preview_size as i32, preview_size as i32, None);
     preview_frame.set_frame(FrameType::BorderBox);
-    preview_frame.set_color(Color::Dark1);
-    let mut slider_vignette_radius = valuator::NiceSlider::new(450, 10, 20, 400, "Radius");
+    preview_frame.set_color(Color::Dark3);
+
+    // vignette controlls
+    let mut vignette_controlls = Group::new(420, 10, 120, 400, "Vignette");
+    vignette_controlls.set_align(Align::BottomRight);
+    vignette_controlls.set_frame(FrameType::BorderBox);
+    let mut slider_vignette_radius = valuator::NiceSlider::default()
+        .with_size(20, 370)
+        .with_pos(vignette_controlls.x() + 20, vignette_controlls.y() + 10)
+        .with_label("Radius");
     slider_vignette_radius.set_range(350.0, 50.0);
     slider_vignette_radius.set_step(1.0, 1);
     slider_vignette_radius.set_value(250.0);
-    let mut slider_vignette_opacity = valuator::NiceSlider::new(520, 10, 20, 400, "Alpha");
+    let mut slider_vignette_opacity = valuator::NiceSlider::default()
+        .with_size(20, 370)
+        .with_pos(vignette_controlls.x() + 80, vignette_controlls.y() + 10)
+        .with_label("Alpha");
     slider_vignette_opacity.set_range(1.0, 0.0);
     slider_vignette_opacity.set_step(0.1, 1);
     slider_vignette_opacity.set_value(0.2);
+    slider_vignette_radius.emit(s, Message::ChangeRadius);
+    slider_vignette_opacity.emit(s, Message::ChangeOpacity);
+    vignette_controlls.end();
+    let mut vignette_active = RadioLightButton::default().with_size(20, 20);
+    vignette_active.below_of(&vignette_controlls, 10);
+
+    // filmgrain controlls
+    let mut filmgrain_controlls = Group::new(550, 10, 120, 400, "Filmgrain");
+    filmgrain_controlls.set_align(Align::BottomRight);
+    filmgrain_controlls.set_frame(FrameType::BorderBox);
+    let mut slider_filmgrain_strength = valuator::NiceSlider::default()
+        .with_size(20, 370)
+        .with_pos(filmgrain_controlls.x() + 20, filmgrain_controlls.y() + 10)
+        .with_label("Strength");
+    slider_filmgrain_strength.set_range(100.0, 0.0);
+    slider_filmgrain_strength.set_step(1.0, 1);
+    slider_filmgrain_strength.set_value(50.0);
+    let mut slider_filmgrain_alpha = valuator::NiceSlider::default()
+        .with_size(20, 370)
+        .with_pos(filmgrain_controlls.x() + 80, filmgrain_controlls.y() + 10)
+        .with_label("Alpha");
+    slider_filmgrain_alpha.set_range(1.0, 0.0);
+    slider_filmgrain_alpha.set_step(0.1, 1);
+    slider_filmgrain_alpha.set_value(0.2);
+    slider_filmgrain_strength.emit(s, Message::ChangeRadius);
+    slider_filmgrain_alpha.emit(s, Message::ChangeOpacity);
+    filmgrain_controlls.end();
+    let mut filmgrain_active = RadioLightButton::default().with_size(20, 20);
+    filmgrain_active.below_of(&filmgrain_controlls, 10);
 
     // let mut progress_bar = Progress::new(10, 500, 300, 20, "Progress");
     // progress_bar.set_minimum(0.0);
@@ -87,13 +130,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     win.show();
 
     // event handling
-    let (s, r) = app::channel::<Message>();
     btn_open_file.emit(s, Message::OpenFile);
     btn_process_file.emit(s, Message::ProcessFile);
     btn_save_file.emit(s, Message::SaveFile);
-    slider_vignette_radius.emit(s, Message::ChangeRadius);
-    slider_vignette_opacity.emit(s, Message::ChangeOpacity);
-
     // event loop for messages
     while app.wait() {
         if let Some(msg) = r.recv() {
