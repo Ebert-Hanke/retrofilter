@@ -5,8 +5,8 @@ authors = ["Michael Ebert-Hanke <michael@ebert-hanke.de>"]
 edition = "2018"
 
 [dependencies]
-fltk = "1.2.4"
-fltk-theme = "0.2.2"
+fltk = "^1.2"
+fltk-theme = "0.4"
 image = "0.23.14"
 imageproc = "0.22.0"
 palette = "0.6"
