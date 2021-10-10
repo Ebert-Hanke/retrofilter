@@ -1,13 +1,14 @@
 mod filehandling;
 use filehandling::{image_open, image_save};
 use fltk::{
-    app, button,
+    app,
+    button,
     dialog::{self, FileDialogOptions},
     enums::{Color, ColorDepth, FrameType},
     frame,
     frame::Frame,
     image as fl_image,
-    misc::Progress,
+    // misc::Progress,
     prelude::*,
     valuator,
     valuator::NiceSlider,
@@ -60,6 +61,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     btn_process_file.turn_on(false);
     let mut btn_save_file = button::Button::new(250, 430, 100, 20, "Save File");
     btn_save_file.deactivate();
+    let mut jpg_quality = valuator::HorValueSlider::new(250, 460, 100, 20, "JPG Quality");
+    jpg_quality.set_range(1.0, 100.0);
+    jpg_quality.set_step(1.0, 1);
+    jpg_quality.set_value(75.0);
     let mut frm = frame::Frame::new(10, 10, preview_size as i32, preview_size as i32, None);
     frm.set_frame(FrameType::BorderBox);
     frm.set_color(Color::Dark1);
@@ -71,9 +76,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     v_slider_opacity.set_range(0.0, 1.0);
     v_slider_opacity.set_step(0.1, 1);
     v_slider_opacity.set_value(0.5);
-    let mut progress_bar = Progress::new(10, 500, 300, 20, "Progress");
-    progress_bar.set_minimum(0.0);
-    progress_bar.set_maximum(100.0);
+
+    // let mut progress_bar = Progress::new(10, 500, 300, 20, "Progress");
+    // progress_bar.set_minimum(0.0);
+    // progress_bar.set_maximum(100.0);
+
     // end setup and display window
     win.end();
     win.show();
@@ -128,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if save_path.file_name().is_some() {
                         match &mut processed_image {
                             Some(image) => {
-                                image_save(image.clone(), 80, save_path)?;
+                                image_save(image.clone(), jpg_quality.value() as u8, save_path)?;
                                 processed_image = None;
                                 btn_save_file.deactivate();
                                 app::redraw();
