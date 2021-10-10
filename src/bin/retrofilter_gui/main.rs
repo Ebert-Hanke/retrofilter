@@ -1,5 +1,5 @@
 mod filehandling;
-use filehandling::image_save;
+use filehandling::{image_open, image_save};
 use fltk::{
     app, button,
     dialog::{self, FileDialogOptions},
@@ -14,7 +14,7 @@ use fltk::{
     window,
 };
 use fltk_theme::{ThemeType, WidgetTheme};
-use image::{io::Reader as ImageReader, DynamicImage, GenericImageView, ImageBuffer, Rgb};
+use image::{DynamicImage, GenericImageView, ImageBuffer, Rgb};
 use retro_filter::process_image;
 
 #[derive(Debug, Clone, Copy)]
@@ -95,13 +95,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     input_chooser.show();
                     let input_path = input_chooser.filename();
                     if input_path.is_file() {
-                        image_data = Some(ImageReader::open(input_path).unwrap().decode().unwrap());
+                        image_data = Some(image_open(input_path)?);
                         if let Some(image) = &image_data {
                             thumbnail = Some(image.thumbnail(preview_size, preview_size));
                         }
                         // draw initial view
                         if let Some(thumbnail) = &thumbnail {
-                            draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity);
+                            draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity)?;
                             btn_process_file.activate();
                             app::redraw();
                         }
@@ -129,7 +129,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if save_path.file_name().is_some() {
                         match &mut processed_image {
                             Some(image) => {
-                                image_save(image.clone(), 80, save_path);
+                                image_save(image.clone(), 80, save_path)?;
                                 processed_image = None;
                                 btn_save_file.deactivate();
                                 app::redraw();
@@ -140,13 +140,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Message::ChangeRadius => {
                     if let Some(thumbnail) = &thumbnail {
-                        draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity);
+                        draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity)?;
                         app::redraw();
                     }
                 }
                 Message::ChangeOpacity => {
                     if let Some(thumbnail) = &thumbnail {
-                        draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity);
+                        draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity)?;
                         app::redraw();
                     }
                 }
@@ -162,7 +162,7 @@ fn draw_image(
     frame: &mut Frame,
     v_slider_radius: &NiceSlider,
     v_slider_opacity: &NiceSlider,
-) {
+) -> Result<(), FltkError> {
     let preview = process_image(
         thumbnail,
         v_slider_radius.value() as u32,
@@ -170,8 +170,9 @@ fn draw_image(
         true,
     );
     let (w, h) = preview.dimensions();
-    let fltk_img = fl_image::RgbImage::new(&preview, w as i32, h as i32, ColorDepth::Rgb8).unwrap();
+    let fltk_img = fl_image::RgbImage::new(&preview, w as i32, h as i32, ColorDepth::Rgb8)?;
     frame.set_image(Some(fltk_img));
+    Ok(())
 }
 
 fn get_preview_scale(image_data: &DynamicImage, preview_size: &u32) -> f64 {
@@ -180,6 +181,6 @@ fn get_preview_scale(image_data: &DynamicImage, preview_size: &u32) -> f64 {
     longer_axis as f64 / *preview_size as f64
 }
 
-fn set_progress(progress: f64, progress_bar: &mut Progress) {
-    progress_bar.set_value(progress_bar.value() + progress);
-}
+// fn set_progress(progress: f64, progress_bar: &mut Progress) {
+//     progress_bar.set_value(progress_bar.value() + progress);
+// }
