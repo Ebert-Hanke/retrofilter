@@ -12,7 +12,6 @@ pub fn image_save(
     quality: u8,
     path: PathBuf,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    //let mut save_path = Path::new(&path);
     let save_path = path.with_extension("jpg");
     let file = File::create(&save_path)?;
     let buffer = &mut BufWriter::new(file);
