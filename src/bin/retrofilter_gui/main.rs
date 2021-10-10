@@ -2,7 +2,7 @@ mod filehandling;
 use filehandling::{image_open, image_save};
 use fltk::{
     app,
-    button::{self, RadioLightButton},
+    button::{self, CheckButton},
     dialog::{self, FileDialogOptions},
     enums::{Align, Color, ColorDepth, FrameType},
     frame,
@@ -23,8 +23,28 @@ pub enum Message {
     OpenFile,
     SaveFile,
     ProcessFile,
-    ChangeRadius,
-    ChangeOpacity,
+    VignetteChangeRadius,
+    VignetteChangeAlpha,
+    VignetteToggle,
+}
+
+struct InputState {
+    vignette: Option<(f64, f64)>,
+    filmgrain: Option<(f64, f64)>,
+}
+impl InputState {
+    fn new() -> InputState {
+        InputState {
+            vignette: None,
+            filmgrain: None,
+        }
+    }
+    fn set_vignette(&mut self, slider_radius: &NiceSlider, slider_alpha: &NiceSlider) {
+        self.vignette = Some((slider_radius.value(), slider_alpha.value()));
+    }
+    fn set_filmgrain(&mut self, slider_strength: &NiceSlider, slider_alpha: &NiceSlider) {
+        self.filmgrain = Some((slider_strength.value(), slider_alpha.value()));
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,6 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut image_data: Option<DynamicImage> = None;
     let mut thumbnail = None;
     let mut processed_image: Option<ImageBuffer<Rgb<u8>, Vec<u8>>> = None;
+    let mut input_state = InputState::new();
     // setup fltk gui
     // theme
     let app = app::App::default().with_scheme(app::Scheme::Gtk);
@@ -73,53 +94,56 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     preview_frame.set_frame(FrameType::BorderBox);
     preview_frame.set_color(Color::Dark3);
 
-    // vignette controlls
-    let mut vignette_controlls = Group::new(420, 10, 120, 400, "Vignette");
-    vignette_controlls.set_align(Align::BottomRight);
-    vignette_controlls.set_frame(FrameType::BorderBox);
+    // vignette controls
+    let mut vignette_controls = Group::new(420, 10, 120, 400, "Vignette");
+    vignette_controls.set_align(Align::BottomRight);
+    vignette_controls.set_frame(FrameType::BorderBox);
     let mut slider_vignette_radius = valuator::NiceSlider::default()
         .with_size(20, 370)
-        .with_pos(vignette_controlls.x() + 20, vignette_controlls.y() + 10)
+        .with_pos(vignette_controls.x() + 20, vignette_controls.y() + 10)
         .with_label("Radius");
     slider_vignette_radius.set_range(350.0, 50.0);
     slider_vignette_radius.set_step(1.0, 1);
     slider_vignette_radius.set_value(250.0);
-    let mut slider_vignette_opacity = valuator::NiceSlider::default()
+    let mut slider_vignette_alpha = valuator::NiceSlider::default()
         .with_size(20, 370)
-        .with_pos(vignette_controlls.x() + 80, vignette_controlls.y() + 10)
+        .with_pos(vignette_controls.x() + 80, vignette_controls.y() + 10)
         .with_label("Alpha");
-    slider_vignette_opacity.set_range(1.0, 0.0);
-    slider_vignette_opacity.set_step(0.1, 1);
-    slider_vignette_opacity.set_value(0.2);
-    slider_vignette_radius.emit(s, Message::ChangeRadius);
-    slider_vignette_opacity.emit(s, Message::ChangeOpacity);
-    vignette_controlls.end();
-    let mut vignette_active = RadioLightButton::default().with_size(20, 20);
-    vignette_active.below_of(&vignette_controlls, 10);
+    slider_vignette_alpha.set_range(1.0, 0.0);
+    slider_vignette_alpha.set_step(0.1, 1);
+    slider_vignette_alpha.set_value(0.2);
+    slider_vignette_radius.emit(s, Message::VignetteChangeRadius);
+    slider_vignette_alpha.emit(s, Message::VignetteChangeAlpha);
+    vignette_controls.end();
+    vignette_controls.deactivate();
+    let mut vignette_active = CheckButton::default()
+        .with_size(10, 10)
+        .below_of(&vignette_controls, 10);
+    vignette_active.emit(s, Message::VignetteToggle);
 
-    // filmgrain controlls
-    let mut filmgrain_controlls = Group::new(550, 10, 120, 400, "Filmgrain");
-    filmgrain_controlls.set_align(Align::BottomRight);
-    filmgrain_controlls.set_frame(FrameType::BorderBox);
+    // filmgrain controls
+    let mut filmgrain_controls = Group::new(550, 10, 120, 400, "Filmgrain");
+    filmgrain_controls.set_align(Align::BottomRight);
+    filmgrain_controls.set_frame(FrameType::BorderBox);
     let mut slider_filmgrain_strength = valuator::NiceSlider::default()
         .with_size(20, 370)
-        .with_pos(filmgrain_controlls.x() + 20, filmgrain_controlls.y() + 10)
+        .with_pos(filmgrain_controls.x() + 20, filmgrain_controls.y() + 10)
         .with_label("Strength");
     slider_filmgrain_strength.set_range(100.0, 0.0);
     slider_filmgrain_strength.set_step(1.0, 1);
     slider_filmgrain_strength.set_value(50.0);
     let mut slider_filmgrain_alpha = valuator::NiceSlider::default()
         .with_size(20, 370)
-        .with_pos(filmgrain_controlls.x() + 80, filmgrain_controlls.y() + 10)
+        .with_pos(filmgrain_controls.x() + 80, filmgrain_controls.y() + 10)
         .with_label("Alpha");
     slider_filmgrain_alpha.set_range(1.0, 0.0);
     slider_filmgrain_alpha.set_step(0.1, 1);
     slider_filmgrain_alpha.set_value(0.2);
-    slider_filmgrain_strength.emit(s, Message::ChangeRadius);
-    slider_filmgrain_alpha.emit(s, Message::ChangeOpacity);
-    filmgrain_controlls.end();
-    let mut filmgrain_active = RadioLightButton::default().with_size(20, 20);
-    filmgrain_active.below_of(&filmgrain_controlls, 10);
+    slider_filmgrain_strength.emit(s, Message::VignetteChangeRadius);
+    slider_filmgrain_alpha.emit(s, Message::VignetteChangeAlpha);
+    filmgrain_controls.end();
+    let mut filmgrain_active = CheckButton::default().with_size(10, 10);
+    filmgrain_active.below_of(&filmgrain_controls, 10);
 
     // let mut progress_bar = Progress::new(10, 500, 300, 20, "Progress");
     // progress_bar.set_minimum(0.0);
@@ -148,12 +172,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         // draw initial view
                         if let Some(thumbnail) = &thumbnail {
-                            draw_image(
-                                thumbnail,
-                                &mut preview_frame,
-                                &slider_vignette_radius,
-                                &slider_vignette_opacity,
-                            )?;
+                            draw_image(thumbnail, &mut preview_frame, &input_state)?;
                             btn_process_file.activate();
                             app::redraw();
                         }
@@ -166,7 +185,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         processed_image = Some(process_image(
                             image_data,
                             scaled_radius.round() as u32,
-                            slider_vignette_opacity.value() as f32,
+                            slider_vignette_alpha.value() as f32,
                         ));
                         btn_process_file.turn_on(true);
                         btn_save_file.activate();
@@ -193,25 +212,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 }
-                Message::ChangeRadius => {
+                Message::VignetteToggle => {
+                    if vignette_controls.active() {
+                        vignette_controls.deactivate();
+                        vignette_active.set_checked(false);
+                    } else {
+                        vignette_controls.activate();
+                        vignette_active.set_checked(true);
+                    };
+                    app::redraw();
+                }
+                Message::VignetteChangeRadius => {
                     if let Some(thumbnail) = &thumbnail {
-                        draw_image(
-                            thumbnail,
-                            &mut preview_frame,
-                            &slider_vignette_radius,
-                            &slider_vignette_opacity,
-                        )?;
+                        input_state.set_vignette(&slider_vignette_radius, &slider_filmgrain_alpha);
+                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
                         app::redraw();
                     }
                 }
-                Message::ChangeOpacity => {
+                Message::VignetteChangeAlpha => {
                     if let Some(thumbnail) = &thumbnail {
-                        draw_image(
-                            thumbnail,
-                            &mut preview_frame,
-                            &slider_vignette_radius,
-                            &slider_vignette_opacity,
-                        )?;
+                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
                         app::redraw();
                     }
                 }
@@ -225,17 +245,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn draw_image(
     thumbnail: &DynamicImage,
     frame: &mut Frame,
-    v_slider_radius: &NiceSlider,
-    v_slider_opacity: &NiceSlider,
+    input_state: &InputState,
 ) -> Result<(), FltkError> {
-    let preview = process_image(
-        thumbnail,
-        v_slider_radius.value() as u32,
-        v_slider_opacity.value() as f32,
-    );
-    let (w, h) = preview.dimensions();
-    let fltk_img = fl_image::RgbImage::new(&preview, w as i32, h as i32, ColorDepth::Rgb8)?;
-    frame.set_image(Some(fltk_img));
+    if let Some(vignette) = input_state.vignette {
+        let preview = process_image(thumbnail, vignette.0 as u32, vignette.1 as f32);
+        let (w, h) = preview.dimensions();
+        let fltk_img = fl_image::RgbImage::new(&preview, w as i32, h as i32, ColorDepth::Rgb8)?;
+        frame.set_image(Some(fltk_img));
+    }
     Ok(())
 }
 
