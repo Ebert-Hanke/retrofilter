@@ -115,7 +115,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             image_data,
                             scaled_radius.round() as u32,
                             v_slider_opacity.value() as f32,
-                            false,
                         ));
                         btn_process_file.turn_on(true);
                         btn_save_file.activate();
@@ -167,7 +166,6 @@ fn draw_image(
         thumbnail,
         v_slider_radius.value() as u32,
         v_slider_opacity.value() as f32,
-        true,
     );
     let (w, h) = preview.dimensions();
     let fltk_img = fl_image::RgbImage::new(&preview, w as i32, h as i32, ColorDepth::Rgb8)?;
