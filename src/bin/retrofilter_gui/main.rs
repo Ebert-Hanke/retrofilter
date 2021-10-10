@@ -61,21 +61,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     btn_process_file.turn_on(false);
     let mut btn_save_file = button::Button::new(250, 430, 100, 20, "Save File");
     btn_save_file.deactivate();
-    let mut jpg_quality = valuator::HorValueSlider::new(250, 460, 100, 20, "JPG Quality");
-    jpg_quality.set_range(1.0, 100.0);
-    jpg_quality.set_step(1.0, 1);
-    jpg_quality.set_value(75.0);
-    let mut frm = frame::Frame::new(10, 10, preview_size as i32, preview_size as i32, None);
-    frm.set_frame(FrameType::BorderBox);
-    frm.set_color(Color::Dark1);
-    let mut v_slider_radius = valuator::NiceSlider::new(450, 10, 20, 400, "Radius");
-    v_slider_radius.set_range(350.0, 50.0);
-    v_slider_radius.set_step(1.0, 1);
-    v_slider_radius.set_value(250.0);
-    let mut v_slider_opacity = valuator::NiceSlider::new(520, 10, 20, 400, "Alpha");
-    v_slider_opacity.set_range(0.0, 1.0);
-    v_slider_opacity.set_step(0.1, 1);
-    v_slider_opacity.set_value(0.2);
+    let mut slider_jpg_quality = valuator::HorValueSlider::new(250, 460, 100, 20, "JPG Quality");
+    slider_jpg_quality.set_range(1.0, 100.0);
+    slider_jpg_quality.set_step(1.0, 1);
+    slider_jpg_quality.set_value(75.0);
+    let mut preview_frame =
+        frame::Frame::new(10, 10, preview_size as i32, preview_size as i32, None);
+    preview_frame.set_frame(FrameType::BorderBox);
+    preview_frame.set_color(Color::Dark1);
+    let mut slider_vignette_radius = valuator::NiceSlider::new(450, 10, 20, 400, "Radius");
+    slider_vignette_radius.set_range(350.0, 50.0);
+    slider_vignette_radius.set_step(1.0, 1);
+    slider_vignette_radius.set_value(250.0);
+    let mut slider_vignette_opacity = valuator::NiceSlider::new(520, 10, 20, 400, "Alpha");
+    slider_vignette_opacity.set_range(1.0, 0.0);
+    slider_vignette_opacity.set_step(0.1, 1);
+    slider_vignette_opacity.set_value(0.2);
 
     // let mut progress_bar = Progress::new(10, 500, 300, 20, "Progress");
     // progress_bar.set_minimum(0.0);
@@ -90,8 +91,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     btn_open_file.emit(s, Message::OpenFile);
     btn_process_file.emit(s, Message::ProcessFile);
     btn_save_file.emit(s, Message::SaveFile);
-    v_slider_radius.emit(s, Message::ChangeRadius);
-    v_slider_opacity.emit(s, Message::ChangeOpacity);
+    slider_vignette_radius.emit(s, Message::ChangeRadius);
+    slider_vignette_opacity.emit(s, Message::ChangeOpacity);
 
     // event loop for messages
     while app.wait() {
@@ -108,7 +109,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         // draw initial view
                         if let Some(thumbnail) = &thumbnail {
-                            draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity)?;
+                            draw_image(
+                                thumbnail,
+                                &mut preview_frame,
+                                &slider_vignette_radius,
+                                &slider_vignette_opacity,
+                            )?;
                             btn_process_file.activate();
                             app::redraw();
                         }
@@ -116,12 +122,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Message::ProcessFile => {
                     if let Some(image_data) = &image_data {
-                        let scaled_radius =
-                            v_slider_radius.value() * get_preview_scale(image_data, &preview_size);
+                        let scaled_radius = slider_vignette_radius.value()
+                            * get_preview_scale(image_data, &preview_size);
                         processed_image = Some(process_image(
                             image_data,
                             scaled_radius.round() as u32,
-                            v_slider_opacity.value() as f32,
+                            slider_vignette_opacity.value() as f32,
                         ));
                         btn_process_file.turn_on(true);
                         btn_save_file.activate();
@@ -135,7 +141,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if save_path.file_name().is_some() {
                         match &mut processed_image {
                             Some(image) => {
-                                image_save(image.clone(), jpg_quality.value() as u8, save_path)?;
+                                image_save(
+                                    image.clone(),
+                                    slider_jpg_quality.value() as u8,
+                                    save_path,
+                                )?;
                                 processed_image = None;
                                 btn_save_file.deactivate();
                                 app::redraw();
@@ -146,13 +156,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Message::ChangeRadius => {
                     if let Some(thumbnail) = &thumbnail {
-                        draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity)?;
+                        draw_image(
+                            thumbnail,
+                            &mut preview_frame,
+                            &slider_vignette_radius,
+                            &slider_vignette_opacity,
+                        )?;
                         app::redraw();
                     }
                 }
                 Message::ChangeOpacity => {
                     if let Some(thumbnail) = &thumbnail {
-                        draw_image(thumbnail, &mut frm, &v_slider_radius, &v_slider_opacity)?;
+                        draw_image(
+                            thumbnail,
+                            &mut preview_frame,
+                            &slider_vignette_radius,
+                            &slider_vignette_opacity,
+                        )?;
                         app::redraw();
                     }
                 }
