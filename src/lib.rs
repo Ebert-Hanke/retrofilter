@@ -12,7 +12,7 @@ pub fn process_image(
     _preview_mode: bool,
 ) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     let (width, height) = image.dimensions();
-    let vignette = create_vignette(width, height, radius);
+    let vignette = create_vignette(width, height, radius, true);
     let mut base_image = image.clone().to_rgb8();
     darken(&mut base_image, &vignette, opacity);
     base_image
