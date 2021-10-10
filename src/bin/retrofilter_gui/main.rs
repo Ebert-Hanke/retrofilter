@@ -71,11 +71,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut v_slider_radius = valuator::NiceSlider::new(450, 10, 20, 400, "Radius");
     v_slider_radius.set_range(350.0, 50.0);
     v_slider_radius.set_step(1.0, 1);
-    v_slider_radius.set_value(150.0);
-    let mut v_slider_opacity = valuator::NiceSlider::new(520, 10, 20, 400, "Opacity");
+    v_slider_radius.set_value(250.0);
+    let mut v_slider_opacity = valuator::NiceSlider::new(520, 10, 20, 400, "Alpha");
     v_slider_opacity.set_range(0.0, 1.0);
     v_slider_opacity.set_step(0.1, 1);
-    v_slider_opacity.set_value(0.5);
+    v_slider_opacity.set_value(0.2);
 
     // let mut progress_bar = Progress::new(10, 500, 300, 20, "Progress");
     // progress_bar.set_minimum(0.0);
