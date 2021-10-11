@@ -16,15 +16,15 @@ use fltk::{
 };
 use fltk_theme::{ThemeType, WidgetTheme};
 use image::{DynamicImage, GenericImageView, ImageBuffer, Rgb};
-use retro_filter::process_image;
+use palette::Blend;
+use retro_filter::{create_vignette, film_grain, palette_blend};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Message {
     OpenFile,
     SaveFile,
     ProcessFile,
-    VignetteChangeRadius,
-    VignetteChangeAlpha,
+    VignetteChange,
     VignetteToggle,
 }
 
@@ -42,8 +42,14 @@ impl InputState {
     fn set_vignette(&mut self, slider_radius: &NiceSlider, slider_alpha: &NiceSlider) {
         self.vignette = Some((slider_radius.value(), slider_alpha.value()));
     }
+    fn reset_vignette(&mut self) {
+        self.vignette = None;
+    }
     fn set_filmgrain(&mut self, slider_strength: &NiceSlider, slider_alpha: &NiceSlider) {
         self.filmgrain = Some((slider_strength.value(), slider_alpha.value()));
+    }
+    fn reset_filmgrain(&mut self) {
+        self.filmgrain = None;
     }
 }
 
@@ -111,9 +117,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_label("Alpha");
     slider_vignette_alpha.set_range(1.0, 0.0);
     slider_vignette_alpha.set_step(0.1, 1);
-    slider_vignette_alpha.set_value(0.2);
-    slider_vignette_radius.emit(s, Message::VignetteChangeRadius);
-    slider_vignette_alpha.emit(s, Message::VignetteChangeAlpha);
+    slider_vignette_alpha.set_value(0.7);
+    slider_vignette_radius.emit(s, Message::VignetteChange);
+    slider_vignette_alpha.emit(s, Message::VignetteChange);
     vignette_controls.end();
     vignette_controls.deactivate();
     let mut vignette_active = CheckButton::default()
@@ -139,9 +145,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     slider_filmgrain_alpha.set_range(1.0, 0.0);
     slider_filmgrain_alpha.set_step(0.1, 1);
     slider_filmgrain_alpha.set_value(0.2);
-    slider_filmgrain_strength.emit(s, Message::VignetteChangeRadius);
-    slider_filmgrain_alpha.emit(s, Message::VignetteChangeAlpha);
+    //    slider_filmgrain_strength.emit(s, Message::VignetteChangeRadius);
+    //    slider_filmgrain_alpha.emit(s, Message::VignetteChangeAlpha);
     filmgrain_controls.end();
+    filmgrain_controls.deactivate();
     let mut filmgrain_active = CheckButton::default().with_size(10, 10);
     filmgrain_active.below_of(&filmgrain_controls, 10);
 
@@ -180,13 +187,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Message::ProcessFile => {
                     if let Some(image_data) = &image_data {
-                        let scaled_radius = slider_vignette_radius.value()
-                            * get_preview_scale(image_data, &preview_size);
-                        processed_image = Some(process_image(
-                            image_data,
-                            scaled_radius.round() as u32,
-                            slider_vignette_alpha.value() as f32,
-                        ));
+                        processed_image =
+                            Some(process_image(image_data, &input_state, preview_size, false));
                         btn_process_file.turn_on(true);
                         btn_save_file.activate();
                         btn_process_file.turn_on(false);
@@ -216,21 +218,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if vignette_controls.active() {
                         vignette_controls.deactivate();
                         vignette_active.set_checked(false);
+                        input_state.reset_vignette();
                     } else {
                         vignette_controls.activate();
                         vignette_active.set_checked(true);
+                        input_state.set_vignette(&slider_vignette_radius, &slider_vignette_alpha);
                     };
-                    app::redraw();
-                }
-                Message::VignetteChangeRadius => {
                     if let Some(thumbnail) = &thumbnail {
-                        input_state.set_vignette(&slider_vignette_radius, &slider_filmgrain_alpha);
                         draw_image(thumbnail, &mut preview_frame, &input_state)?;
                         app::redraw();
                     }
                 }
-                Message::VignetteChangeAlpha => {
+                Message::VignetteChange => {
                     if let Some(thumbnail) = &thumbnail {
+                        input_state.set_vignette(&slider_vignette_radius, &slider_vignette_alpha);
                         draw_image(thumbnail, &mut preview_frame, &input_state)?;
                         app::redraw();
                     }
@@ -247,13 +248,46 @@ fn draw_image(
     frame: &mut Frame,
     input_state: &InputState,
 ) -> Result<(), FltkError> {
-    if let Some(vignette) = input_state.vignette {
-        let preview = process_image(thumbnail, vignette.0 as u32, vignette.1 as f32);
-        let (w, h) = preview.dimensions();
-        let fltk_img = fl_image::RgbImage::new(&preview, w as i32, h as i32, ColorDepth::Rgb8)?;
-        frame.set_image(Some(fltk_img));
-    }
+    let preview = process_image(thumbnail, input_state, 400, true);
+    let (w, h) = preview.dimensions();
+    let fltk_img = fl_image::RgbImage::new(&preview, w as i32, h as i32, ColorDepth::Rgb8)?;
+    frame.set_image(Some(fltk_img));
+
     Ok(())
+}
+
+fn process_image(
+    image: &DynamicImage,
+    input_state: &InputState,
+    preview_size: u32,
+    preview: bool,
+) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+    let (width, height) = image.dimensions();
+    let mut base_image = image.clone().to_rgb8();
+    if let Some(vignette_input) = input_state.vignette {
+        let radius = if preview {
+            vignette_input.0
+        } else {
+            get_preview_scale(image, &preview_size) * vignette_input.0
+        };
+        let vignette = create_vignette(width, height, radius as u32, true);
+        palette_blend(
+            &mut base_image,
+            &vignette,
+            vignette_input.1 as f32,
+            |c1, c2| c1.multiply(c2),
+        );
+    }
+    if let Some(filmgrain_input) = input_state.filmgrain {
+        let filmgrain = film_grain(width, height, filmgrain_input.0 as u8);
+        palette_blend(
+            &mut &mut base_image,
+            &filmgrain,
+            filmgrain_input.1 as f32,
+            |c1, c2| c1.overlay(c2),
+        );
+    }
+    base_image
 }
 
 fn get_preview_scale(image_data: &DynamicImage, preview_size: &u32) -> f64 {
