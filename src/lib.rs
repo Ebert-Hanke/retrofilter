@@ -27,16 +27,16 @@ pub fn palette_blend<F>(
 }
 
 pub fn film_grain(width: u32, height: u32, noise_amount: u8) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
-    let mut buffer = ImageBuffer::from_fn(width, height, |_x, _y| Rgb([100u8, 100u8, 100u8]));
+    let mut buffer = ImageBuffer::from_fn(width, height, |_x, _y| Rgb([255u8, 255u8, 255u8]));
     let mut rng = rand::thread_rng();
     buffer.pixels_mut().for_each(|px| {
         if rng.gen_range(0..100) < noise_amount {
-            let random = rng.gen_range(-50..50);
+            let random = rng.gen_range(0..50);
             (0..3).into_iter().for_each(|i| {
-                px[i] = (px[i] as i32 + random) as u8;
+                px[i] -= random;
             });
         }
     });
-    buffer = blur(&buffer, 0.2);
+    buffer = blur(&buffer, 0.3);
     buffer
 }
