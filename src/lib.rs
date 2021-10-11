@@ -1,20 +1,9 @@
-use image::{DynamicImage, GenericImageView, ImageBuffer, Rgb};
+use image::{imageops::blur, DynamicImage, GenericImageView, ImageBuffer, Rgb};
 mod vignette;
 use palette::{Blend, LinSrgba, Pixel, Srgb, WithAlpha};
+use rand::prelude::*;
 use rayon::prelude::*;
-use vignette::create_vignette;
-
-pub fn process_image(
-    image: &DynamicImage,
-    radius: u32,
-    alpha: f32,
-) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
-    let (width, height) = image.dimensions();
-    let vignette = create_vignette(width, height, radius, true);
-    let mut base_image = image.clone().to_rgb8();
-    palette_blend(&mut base_image, &vignette, alpha, |c1, c2| c1.multiply(c2));
-    base_image
-}
+pub use vignette::create_vignette;
 
 pub fn palette_blend<F>(
     base_image: &mut ImageBuffer<Rgb<u8>, Vec<u8>>,
@@ -26,12 +15,28 @@ pub fn palette_blend<F>(
 {
     let base: &mut [Srgb<u8>] = Pixel::from_raw_slice_mut(base_image);
     let top: &[Srgb<u8>] = Pixel::from_raw_slice(top_image);
-    base.par_iter_mut().zip(top).for_each(|(color1, color2)| {
-        let color1_alpha: LinSrgba = color1.into_format().into_linear().opaque();
-        let color2_alpha: LinSrgba = color2.into_format().into_linear().with_alpha(alpha);
-        let blended = blend_fn(color1_alpha, color2_alpha);
-        //        let blended = color2_alpha.multiply(color1_alpha);
+    base.par_iter_mut()
+        .zip(top.par_iter())
+        .for_each(|(color1, color2)| {
+            let color1_alpha: LinSrgba = color1.into_format().into_linear().opaque();
+            let color2_alpha: LinSrgba = color2.into_format().into_linear().with_alpha(alpha);
+            let blended = blend_fn(color1_alpha, color2_alpha);
 
-        *color1 = blended.color.into_encoding().into_format();
+            *color1 = blended.color.into_encoding().into_format();
+        });
+}
+
+pub fn film_grain(width: u32, height: u32, noise_amount: u8) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+    let mut buffer = ImageBuffer::from_fn(width, height, |_x, _y| Rgb([100u8, 100u8, 100u8]));
+    let mut rng = rand::thread_rng();
+    buffer.pixels_mut().for_each(|px| {
+        if rng.gen_range(0..100) < noise_amount {
+            let random = rng.gen_range(-50..50);
+            (0..3).into_iter().for_each(|i| {
+                px[i] = (px[i] as i32 + random) as u8;
+            });
+        }
     });
+    buffer = blur(&buffer, 0.2);
+    buffer
 }
