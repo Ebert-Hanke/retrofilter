@@ -13,19 +13,16 @@ pub fn palette_blend<F>(
 ) where
     F: Fn(LinSrgba, LinSrgba) -> LinSrgba + std::marker::Sync,
 {
-    base_image
-        .pixels_mut()
-        .into_iter()
-        .zip(top_image.pixels().into_iter())
-        .for_each(|(base, top)| {
-            let color1: &mut [Srgb<u8>] = Pixel::from_raw_slice_mut(&mut base.0);
-            let color2: &[Srgb<u8>] = Pixel::from_raw_slice(&top.0);
-            let color1_alpha: LinSrgba = color1[0].into_format().into_linear().opaque();
-            let color2_alpha: LinSrgba = color2[0].into_format().into_linear().with_alpha(alpha);
-            let blended = blend_fn(color1_alpha, color2_alpha);
+    let base: &mut [Srgb<u8>] = Pixel::from_raw_slice_mut(base_image);
+    let top: &[Srgb<u8>] = Pixel::from_raw_slice(top_image);
 
-            color1[0] = blended.color.into_encoding().into_format();
-        });
+    base.par_iter_mut().zip(top).for_each(|(c1, c2)| {
+        let color1_alpha: LinSrgba = c1.into_format().into_linear().opaque();
+        let color2_alpha: LinSrgba = c2.into_format().into_linear().with_alpha(alpha);
+        let blended = blend_fn(color1_alpha, color2_alpha);
+
+        *c1 = blended.color.into_encoding().into_format();
+    });
 }
 
 pub fn film_grain(width: u32, height: u32, noise_amount: u8) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
@@ -33,7 +30,7 @@ pub fn film_grain(width: u32, height: u32, noise_amount: u8) -> ImageBuffer<Rgb<
     let mut rng = rand::thread_rng();
     buffer.pixels_mut().for_each(|px| {
         if rng.gen_range(0..100) < noise_amount {
-            let random = rng.gen_range(0..50);
+            let random = rng.gen_range(0..100);
             (0..3).into_iter().for_each(|i| {
                 px[i] -= random;
             });
