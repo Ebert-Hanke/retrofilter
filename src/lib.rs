@@ -1,6 +1,6 @@
 use image::{imageops::blur, ImageBuffer, Rgb};
 mod vignette;
-use palette::{LinSrgba, Pixel, Srgb, WithAlpha};
+use palette::{Blend, LinSrgba, Pixel, Srgb, WithAlpha};
 use rand::prelude::*;
 use rayon::prelude::*;
 pub use vignette::create_vignette;
@@ -13,16 +13,18 @@ pub fn palette_blend<F>(
 ) where
     F: Fn(LinSrgba, LinSrgba) -> LinSrgba + std::marker::Sync,
 {
-    let base: &mut [Srgb<u8>] = Pixel::from_raw_slice_mut(base_image);
-    let top: &[Srgb<u8>] = Pixel::from_raw_slice(top_image);
-    base.par_iter_mut()
-        .zip(top.par_iter())
-        .for_each(|(color1, color2)| {
-            let color1_alpha: LinSrgba = color1.into_format().into_linear().opaque();
-            let color2_alpha: LinSrgba = color2.into_format().into_linear().with_alpha(alpha);
+    base_image
+        .pixels_mut()
+        .into_iter()
+        .zip(top_image.pixels().into_iter())
+        .for_each(|(base, top)| {
+            let color1: &mut [Srgb<u8>] = Pixel::from_raw_slice_mut(&mut base.0);
+            let color2: &[Srgb<u8>] = Pixel::from_raw_slice(&top.0);
+            let color1_alpha: LinSrgba = color1[0].into_format().into_linear().opaque();
+            let color2_alpha: LinSrgba = color2[0].into_format().into_linear().with_alpha(alpha);
             let blended = blend_fn(color1_alpha, color2_alpha);
 
-            *color1 = blended.color.into_encoding().into_format();
+            color1[0] = blended.color.into_encoding().into_format();
         });
 }
 
