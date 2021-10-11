@@ -26,6 +26,8 @@ pub enum Message {
     ProcessFile,
     VignetteChange,
     VignetteToggle,
+    FilmgrainChange,
+    FilmgrainToggle,
 }
 
 struct InputState {
@@ -145,12 +147,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     slider_filmgrain_alpha.set_range(1.0, 0.0);
     slider_filmgrain_alpha.set_step(0.1, 1);
     slider_filmgrain_alpha.set_value(0.2);
-    //    slider_filmgrain_strength.emit(s, Message::VignetteChangeRadius);
-    //    slider_filmgrain_alpha.emit(s, Message::VignetteChangeAlpha);
+    slider_filmgrain_strength.emit(s, Message::FilmgrainChange);
+    slider_filmgrain_alpha.emit(s, Message::FilmgrainChange);
     filmgrain_controls.end();
     filmgrain_controls.deactivate();
-    let mut filmgrain_active = CheckButton::default().with_size(10, 10);
-    filmgrain_active.below_of(&filmgrain_controls, 10);
+    let mut filmgrain_active = CheckButton::default()
+        .with_size(10, 10)
+        .below_of(&filmgrain_controls, 10);
+    filmgrain_active.emit(s, Message::FilmgrainToggle);
 
     // let mut progress_bar = Progress::new(10, 500, 300, 20, "Progress");
     // progress_bar.set_minimum(0.0);
@@ -236,6 +240,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         app::redraw();
                     }
                 }
+                Message::FilmgrainToggle => {
+                    if filmgrain_controls.active() {
+                        filmgrain_controls.deactivate();
+                        filmgrain_active.set_checked(false);
+                        input_state.reset_filmgrain();
+                    } else {
+                        filmgrain_controls.activate();
+                        filmgrain_active.set_checked(true);
+                        input_state
+                            .set_filmgrain(&slider_filmgrain_strength, &slider_filmgrain_alpha);
+                    };
+                    if let Some(thumbnail) = &thumbnail {
+                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
+                        app::redraw();
+                    }
+                }
+                Message::FilmgrainChange => {
+                    if let Some(thumbnail) = &thumbnail {
+                        input_state
+                            .set_filmgrain(&slider_filmgrain_strength, &slider_filmgrain_alpha);
+                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
+                        app::redraw();
+                    }
+                }
             }
         }
     }
@@ -284,7 +312,7 @@ fn process_image(
             &mut &mut base_image,
             &filmgrain,
             filmgrain_input.1 as f32,
-            |c1, c2| c1.overlay(c2),
+            |c1, c2| c1.multiply(c2),
         );
     }
     base_image

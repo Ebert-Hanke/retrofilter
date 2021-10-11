@@ -1,6 +1,6 @@
-use image::{imageops::blur, DynamicImage, GenericImageView, ImageBuffer, Rgb};
+use image::{imageops::blur, ImageBuffer, Rgb};
 mod vignette;
-use palette::{Blend, LinSrgba, Pixel, Srgb, WithAlpha};
+use palette::{LinSrgba, Pixel, Srgb, WithAlpha};
 use rand::prelude::*;
 use rayon::prelude::*;
 pub use vignette::create_vignette;
