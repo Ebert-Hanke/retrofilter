@@ -17,7 +17,7 @@ use fltk::{
 use fltk_theme::{ThemeType, WidgetTheme};
 use image::{DynamicImage, GenericImageView, ImageBuffer, Rgb};
 use palette::Blend;
-use retro_filter::{create_vignette, film_grain, palette_blend};
+use retro_filter::{bleach_bypass, create_vignette, film_grain, palette_blend};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Message {
@@ -28,17 +28,21 @@ pub enum Message {
     VignetteToggle,
     FilmgrainChange,
     FilmgrainToggle,
+    BleachbypassChange,
+    BleachbypassToggle,
 }
 
 struct InputState {
     vignette: Option<(f64, f64)>,
     filmgrain: Option<(f64, f64)>,
+    bleachbypass: Option<(f64, f64)>,
 }
 impl InputState {
     fn new() -> InputState {
         InputState {
             vignette: None,
             filmgrain: None,
+            bleachbypass: None,
         }
     }
     fn set_vignette(&mut self, slider_radius: &NiceSlider, slider_alpha: &NiceSlider) {
@@ -52,6 +56,12 @@ impl InputState {
     }
     fn reset_filmgrain(&mut self) {
         self.filmgrain = None;
+    }
+    fn set_bleachbypass(&mut self, slider_strength: &NiceSlider, slider_alpha: &NiceSlider) {
+        self.bleachbypass = Some((slider_strength.value(), slider_alpha.value()));
+    }
+    fn reset_bleachbypass(&mut self) {
+        self.bleachbypass = None;
     }
 }
 
@@ -155,6 +165,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_size(10, 10)
         .below_of(&filmgrain_controls, 10);
     filmgrain_active.emit(s, Message::FilmgrainToggle);
+
+    // bleachbypass controls
+    let mut bleachbypass_controls = Group::new(680, 10, 120, 400, "BleachBypass");
+    bleachbypass_controls.set_align(Align::BottomRight);
+    bleachbypass_controls.set_frame(FrameType::BorderBox);
+    let mut slider_bleachbypass_blur = valuator::NiceSlider::default()
+        .with_size(20, 370)
+        .with_pos(
+            bleachbypass_controls.x() + 20,
+            bleachbypass_controls.y() + 10,
+        )
+        .with_label("Blur");
+    slider_bleachbypass_blur.set_range(2.0, 0.1);
+    slider_bleachbypass_blur.set_step(0.1, 1);
+    slider_bleachbypass_blur.set_value(0.0);
+    let mut slider_bleachbypass_alpha = valuator::NiceSlider::default()
+        .with_size(20, 370)
+        .with_pos(
+            bleachbypass_controls.x() + 80,
+            bleachbypass_controls.y() + 10,
+        )
+        .with_label("Alpha");
+    slider_bleachbypass_alpha.set_range(1.0, 0.0);
+    slider_bleachbypass_alpha.set_step(0.1, 1);
+    slider_bleachbypass_alpha.set_value(0.2);
+    slider_bleachbypass_blur.emit(s, Message::BleachbypassChange);
+    slider_bleachbypass_alpha.emit(s, Message::BleachbypassChange);
+    bleachbypass_controls.end();
+    bleachbypass_controls.deactivate();
+    let mut bleachbypass_active = CheckButton::default()
+        .with_size(10, 10)
+        .below_of(&bleachbypass_controls, 10);
+    bleachbypass_active.emit(s, Message::BleachbypassToggle);
 
     // let mut progress_bar = Progress::new(10, 500, 300, 20, "Progress");
     // progress_bar.set_minimum(0.0);
@@ -264,6 +307,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         app::redraw();
                     }
                 }
+                Message::BleachbypassToggle => {
+                    if bleachbypass_controls.active() {
+                        bleachbypass_controls.deactivate();
+                        bleachbypass_active.set_checked(false);
+                        input_state.reset_bleachbypass();
+                    } else {
+                        bleachbypass_controls.activate();
+                        bleachbypass_active.set_checked(true);
+                        input_state.set_bleachbypass(
+                            &slider_bleachbypass_blur,
+                            &slider_bleachbypass_alpha,
+                        );
+                    };
+                    if let Some(thumbnail) = &thumbnail {
+                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
+                        app::redraw();
+                    }
+                }
+                Message::BleachbypassChange => {
+                    if let Some(thumbnail) = &thumbnail {
+                        input_state.set_bleachbypass(
+                            &slider_bleachbypass_blur,
+                            &slider_bleachbypass_alpha,
+                        );
+                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
+                        app::redraw();
+                    }
+                }
             }
         }
     }
@@ -309,12 +380,24 @@ fn process_image(
     if let Some(filmgrain_input) = input_state.filmgrain {
         let filmgrain = film_grain(width, height, filmgrain_input.0 as u8);
         palette_blend(
-            &mut &mut base_image,
+            &mut base_image,
             &filmgrain,
             filmgrain_input.1 as f32,
             |c1, c2| c1.multiply(c2),
         );
     }
+    if let Some(bleachbypass_input) = input_state.bleachbypass {
+        let overlay = bleach_bypass(&base_image);
+        if let Some(overlay) = overlay {
+            palette_blend(
+                &mut base_image,
+                &overlay,
+                bleachbypass_input.1 as f32,
+                |c1, c2| c1.overlay(c2),
+            );
+        };
+    }
+
     base_image
 }
 
