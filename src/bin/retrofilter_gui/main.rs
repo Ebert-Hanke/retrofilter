@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // define window
     let mut win = window::Window::default()
-        .with_size(900, 600)
+        .with_size(810, 500)
         .center_screen()
         .with_label("Retro Filter");
     win.set_color(Color::BackGround);
@@ -97,13 +97,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     input_chooser.set_filter("*.{jpg,jpeg,JPG,png,tif,bmp}");
     let mut save_chooser = dialog::NativeFileChooser::new(dialog::FileDialogType::BrowseSaveFile);
     save_chooser.set_option(dialog::FileDialogOptions::SaveAsConfirm);
-    let mut btn_open_file = button::Button::new(10, 430, 100, 20, "Open File");
-    let mut btn_process_file = button::LightButton::new(130, 430, 100, 20, "Process");
+    let mut btn_open_file = button::Button::new(10, 420, 100, 20, "Open File");
+    let mut btn_save_file = button::Button::new(10, 450, 100, 20, "Save File");
+    btn_save_file.deactivate();
+    let mut btn_process_file = button::LightButton::new(120, 420, 100, 20, "Process");
     btn_process_file.deactivate();
     btn_process_file.turn_on(false);
-    let mut btn_save_file = button::Button::new(250, 430, 100, 20, "Save File");
-    btn_save_file.deactivate();
-    let mut slider_jpg_quality = valuator::HorValueSlider::new(250, 460, 100, 20, "JPG Quality");
+    let mut slider_jpg_quality = valuator::HorValueSlider::new(120, 450, 100, 20, "JPG Quality");
     slider_jpg_quality.set_range(1.0, 100.0);
     slider_jpg_quality.set_step(1.0, 1);
     slider_jpg_quality.set_value(75.0);
@@ -135,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     vignette_controls.end();
     vignette_controls.deactivate();
     let mut vignette_active = CheckButton::default()
-        .with_size(10, 10)
+        .with_size(15, 15)
         .below_of(&vignette_controls, 10);
     vignette_active.emit(s, Message::VignetteToggle);
 
@@ -162,7 +162,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     filmgrain_controls.end();
     filmgrain_controls.deactivate();
     let mut filmgrain_active = CheckButton::default()
-        .with_size(10, 10)
+        .with_size(15, 15)
         .below_of(&filmgrain_controls, 10);
     filmgrain_active.emit(s, Message::FilmgrainToggle);
 
@@ -195,13 +195,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     bleachbypass_controls.end();
     bleachbypass_controls.deactivate();
     let mut bleachbypass_active = CheckButton::default()
-        .with_size(10, 10)
+        .with_size(15, 15)
         .below_of(&bleachbypass_controls, 10);
     bleachbypass_active.emit(s, Message::BleachbypassToggle);
-
-    // let mut progress_bar = Progress::new(10, 500, 300, 20, "Progress");
-    // progress_bar.set_minimum(0.0);
-    // progress_bar.set_maximum(100.0);
 
     // end setup and display window
     win.end();
@@ -387,7 +383,7 @@ fn process_image(
         );
     }
     if let Some(bleachbypass_input) = input_state.bleachbypass {
-        let overlay = bleach_bypass(&base_image);
+        let overlay = bleach_bypass(&base_image, bleachbypass_input.0 as f32);
         if let Some(overlay) = overlay {
             palette_blend(
                 &mut base_image,
@@ -406,7 +402,3 @@ fn get_preview_scale(image_data: &DynamicImage, preview_size: &u32) -> f64 {
     let longer_axis = if w > h { w } else { h };
     longer_axis as f64 / *preview_size as f64
 }
-
-// fn set_progress(progress: f64, progress_bar: &mut Progress) {
-//     progress_bar.set_value(progress_bar.value() + progress);
-// }
