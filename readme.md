@@ -1,6 +1,7 @@
 # retro-filter
 
 This is a simple image processing app as a learning project in my Rust journey.
+
 The retro filter can do the following:
 
 - add a vignette to an image. The vignette aims to be realistic and is optimized to not show banding.
