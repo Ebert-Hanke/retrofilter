@@ -39,3 +39,20 @@ pub fn film_grain(width: u32, height: u32, noise_amount: u8) -> ImageBuffer<Rgb<
     buffer = blur(&buffer, 0.3);
     buffer
 }
+
+pub fn bleach_bypass(
+    image: &ImageBuffer<Rgb<u8>, Vec<u8>>,
+    blur_amount: f32,
+) -> Option<ImageBuffer<Rgb<u8>, Vec<u8>>> {
+    let (w, h) = image.dimensions();
+    let mut overlay = image.clone().into_raw();
+    overlay.chunks_mut(3).into_iter().for_each(|px| {
+        px[1] = px[0];
+        px[2] = px[0];
+    });
+    let mut output: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(w, h, overlay)?;
+    if blur_amount > 0.0 {
+        output = blur(&output, blur_amount);
+    }
+    Some(output)
+}
