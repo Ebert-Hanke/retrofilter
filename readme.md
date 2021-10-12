@@ -1,11 +1,17 @@
-# retro-filter
+# retro_filter
 
-This is a simple image processing app as a learning project in my Rust journey.
+retro_filter is a simple image processing tool, which allows one to make digital images look a bit "retro".
 
-The retro filter can do the following:
+## Functionality
 
-- add a vignette to an image. The vignette aims to be realistic and is optimized to not show banding.
-- add a film-grain effect to the image [ToDo: more realistic look]
-- add a bleach-bypass effect to the image
+- Add a vignette to an image. The vignette aims to be realistic and is optimized to not show banding.
+- Add a film-grain effect to the image [ToDo: more realistic look]
+- Add a bleach-bypass effect to the image
 
-The crate consists of a binary for the gui app and a library which gives you the functionality for the image processing.
+## Lib & GUI-App 
+
+The crate consists of a binary for the gui app which uses [fltk-rs](https://github.com/fltk-rs/fltk-rs) and a library which gives you the functionality for the image processing.
+
+## Screenshot
+
+<img src="./screenshot.jpg" alt="gui screenshot">
