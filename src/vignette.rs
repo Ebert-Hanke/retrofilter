@@ -50,7 +50,6 @@ fn gradient_noise(buffer: &mut ImageBuffer<Rgb<u8>, Vec<u8>>) {
         || rand::thread_rng(),
         |rng, p| {
             if *p != 0 && *p != 255 {
-                //let mut rng = rand::thread_rng();
                 let random: i32 = *p as i32 + rng.gen_range(-10..10);
                 if random < 0 {
                     *p = 0
