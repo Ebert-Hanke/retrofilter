@@ -359,14 +359,16 @@ fn process_image(
 ) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     let (width, height) = image.dimensions();
     let mut base_image = image.clone().to_rgb8();
-    if let Some(filmgrain_input) = input_state.filmgrain {
-        let filmgrain = film_grain(width, height, filmgrain_input.0 as u8);
-        palette_blend(
-            &mut base_image,
-            &filmgrain,
-            filmgrain_input.1 as f32,
-            |c1, c2| c1.multiply(c2),
-        );
+    if let Some(bleachbypass_input) = input_state.bleachbypass {
+        let overlay = bleach_bypass(&base_image, bleachbypass_input.0 as f32);
+        if let Some(overlay) = overlay {
+            palette_blend(
+                &mut base_image,
+                &overlay,
+                bleachbypass_input.1 as f32,
+                |c1, c2| c1.overlay(c2),
+            );
+        };
     }
     if let Some(vignette_input) = input_state.vignette {
         let radius = if preview {
@@ -382,16 +384,14 @@ fn process_image(
             |c1, c2| c1.multiply(c2),
         );
     }
-    if let Some(bleachbypass_input) = input_state.bleachbypass {
-        let overlay = bleach_bypass(&base_image, bleachbypass_input.0 as f32);
-        if let Some(overlay) = overlay {
-            palette_blend(
-                &mut base_image,
-                &overlay,
-                bleachbypass_input.1 as f32,
-                |c1, c2| c1.overlay(c2),
-            );
-        };
+    if let Some(filmgrain_input) = input_state.filmgrain {
+        let filmgrain = film_grain(width, height, filmgrain_input.0 as u8);
+        palette_blend(
+            &mut base_image,
+            &filmgrain,
+            filmgrain_input.1 as f32,
+            |c1, c2| c1.multiply(c2),
+        );
     }
 
     base_image
