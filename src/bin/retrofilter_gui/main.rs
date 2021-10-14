@@ -359,6 +359,15 @@ fn process_image(
 ) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     let (width, height) = image.dimensions();
     let mut base_image = image.clone().to_rgb8();
+    if let Some(filmgrain_input) = input_state.filmgrain {
+        let filmgrain = film_grain(width, height, filmgrain_input.0 as u8);
+        palette_blend(
+            &mut base_image,
+            &filmgrain,
+            filmgrain_input.1 as f32,
+            |c1, c2| c1.multiply(c2),
+        );
+    }
     if let Some(vignette_input) = input_state.vignette {
         let radius = if preview {
             vignette_input.0
@@ -370,15 +379,6 @@ fn process_image(
             &mut base_image,
             &vignette,
             vignette_input.1 as f32,
-            |c1, c2| c1.multiply(c2),
-        );
-    }
-    if let Some(filmgrain_input) = input_state.filmgrain {
-        let filmgrain = film_grain(width, height, filmgrain_input.0 as u8);
-        palette_blend(
-            &mut base_image,
-            &filmgrain,
-            filmgrain_input.1 as f32,
             |c1, c2| c1.multiply(c2),
         );
     }
