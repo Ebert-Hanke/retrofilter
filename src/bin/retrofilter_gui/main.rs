@@ -1,4 +1,6 @@
 mod filehandling;
+use std::path::PathBuf;
+
 use filehandling::{image_open, image_save};
 use fltk::{
     app,
@@ -30,6 +32,71 @@ pub enum Message {
     FilmgrainToggle,
     BleachbypassChange,
     BleachbypassToggle,
+}
+
+struct DataState {
+    image_data: Option<DynamicImage>,
+    preview_size: u32,
+    image_thumbnail: Option<DynamicImage>,
+    image_processed: Option<ImageBuffer<Rgb<u8>, Vec<u8>>>,
+}
+impl DataState {
+    fn new() -> Self {
+        Self {
+            image_data: None,
+            preview_size: 400,
+            image_thumbnail: None,
+            image_processed: None,
+        }
+    }
+    fn set_image(&mut self, input_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        self.image_data = Some(image_open(input_path)?);
+        if let Some(image) = &self.image_data {
+            self.image_thumbnail = Some(image.thumbnail(self.preview_size, self.preview_size));
+        }
+        Ok(())
+    }
+    fn process_thumbnail(&mut self, input_state: &InputState) {
+        if let Some(image_thumbnail) = &self.image_thumbnail {
+            self.image_thumbnail = Some(DynamicImage::ImageRgb8(process_image(
+                image_thumbnail,
+                input_state,
+                self.preview_size,
+                true,
+            )));
+        }
+    }
+    fn reset_thumbnail(&mut self) {
+        if let Some(image) = &self.image_data {
+            self.image_thumbnail = Some(image.thumbnail(self.preview_size, self.preview_size));
+        }
+    }
+    fn process_image(&mut self, input_state: &InputState) {
+        if let Some(image_data) = &self.image_data {
+            self.image_processed = Some(process_image(
+                image_data,
+                input_state,
+                self.preview_size,
+                false,
+            ));
+        }
+    }
+    fn reset_process_image(&mut self) {
+        self.image_processed = None;
+    }
+    fn set_fltk_image(&mut self, frame: &mut Frame) -> Result<(), FltkError> {
+        if let Some(thumbnail) = &self.image_thumbnail {
+            let (w, h) = thumbnail.dimensions();
+            let fltk_img = fl_image::RgbImage::new(
+                &thumbnail.to_rgb8(),
+                w as i32,
+                h as i32,
+                ColorDepth::Rgb8,
+            )?;
+            frame.set_image(Some(fltk_img));
+        }
+        Ok(())
+    }
 }
 
 struct InputState {
@@ -68,11 +135,9 @@ impl InputState {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // settings
     let preview_size: u32 = 400;
-    // initial data
-    let mut image_data: Option<DynamicImage> = None;
-    let mut thumbnail = None;
-    let mut processed_image: Option<ImageBuffer<Rgb<u8>, Vec<u8>>> = None;
+    // initial state
     let mut input_state = InputState::new();
+    let mut data_state = DataState::new();
     // setup fltk gui
     // theme
     let app = app::App::default().with_scheme(app::Scheme::Gtk);
@@ -216,40 +281,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     input_chooser.show();
                     let input_path = input_chooser.filename();
                     if input_path.is_file() {
-                        image_data = Some(image_open(input_path)?);
-                        if let Some(image) = &image_data {
-                            thumbnail = Some(image.thumbnail(preview_size, preview_size));
-                        }
-                        // draw initial view
-                        if let Some(thumbnail) = &thumbnail {
-                            draw_image(thumbnail, &mut preview_frame, &input_state)?;
-                            btn_process_file.activate();
-                            app::redraw();
-                        }
+                        data_state.set_image(input_path)?;
                     }
+                    // draw initial view
+                    data_state.set_fltk_image(&mut preview_frame)?;
+                    btn_process_file.activate();
+                    app::redraw();
                 }
+
                 Message::ProcessFile => {
-                    if let Some(image_data) = &image_data {
-                        processed_image =
-                            Some(process_image(image_data, &input_state, preview_size, false));
-                        btn_process_file.turn_on(true);
-                        btn_save_file.activate();
-                        btn_process_file.turn_on(false);
-                        app::redraw();
-                    }
+                    data_state.process_image(&input_state);
+                    btn_process_file.turn_on(true);
+                    btn_save_file.activate();
+                    btn_process_file.turn_on(false);
+                    app::redraw();
                 }
                 Message::SaveFile => {
                     save_chooser.show();
                     let save_path = save_chooser.filename();
                     if save_path.file_name().is_some() {
-                        match &mut processed_image {
+                        match &mut data_state.image_processed {
                             Some(image) => {
                                 image_save(
                                     image.clone(),
                                     slider_jpg_quality.value() as u8,
                                     save_path,
                                 )?;
-                                processed_image = None;
+                                data_state.reset_process_image();
                                 btn_save_file.deactivate();
                                 app::redraw();
                             }
@@ -262,52 +320,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         vignette_controls.deactivate();
                         vignette_active.set_checked(false);
                         input_state.reset_vignette();
+                        data_state.reset_thumbnail();
                     } else {
                         vignette_controls.activate();
                         vignette_active.set_checked(true);
                         input_state.set_vignette(&slider_vignette_radius, &slider_vignette_alpha);
                     };
-                    if let Some(thumbnail) = &thumbnail {
-                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
-                        app::redraw();
-                    }
+                    data_state.process_thumbnail(&input_state);
+                    data_state.set_fltk_image(&mut preview_frame)?;
+                    app::redraw();
                 }
                 Message::VignetteChange => {
-                    if let Some(thumbnail) = &thumbnail {
-                        input_state.set_vignette(&slider_vignette_radius, &slider_vignette_alpha);
-                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
-                        app::redraw();
-                    }
+                    input_state.set_vignette(&slider_vignette_radius, &slider_vignette_alpha);
+                    data_state.process_thumbnail(&input_state);
+                    data_state.set_fltk_image(&mut preview_frame)?;
+                    app::redraw();
                 }
                 Message::FilmgrainToggle => {
                     if filmgrain_controls.active() {
                         filmgrain_controls.deactivate();
                         filmgrain_active.set_checked(false);
                         input_state.reset_filmgrain();
+                        data_state.reset_thumbnail();
                     } else {
                         filmgrain_controls.activate();
                         filmgrain_active.set_checked(true);
                         input_state
                             .set_filmgrain(&slider_filmgrain_strength, &slider_filmgrain_alpha);
                     };
-                    if let Some(thumbnail) = &thumbnail {
-                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
-                        app::redraw();
-                    }
+                    data_state.process_thumbnail(&input_state);
+                    data_state.set_fltk_image(&mut preview_frame)?;
+                    app::redraw();
                 }
                 Message::FilmgrainChange => {
-                    if let Some(thumbnail) = &thumbnail {
-                        input_state
-                            .set_filmgrain(&slider_filmgrain_strength, &slider_filmgrain_alpha);
-                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
-                        app::redraw();
-                    }
+                    input_state.set_filmgrain(&slider_filmgrain_strength, &slider_filmgrain_alpha);
+                    data_state.process_thumbnail(&input_state);
+                    data_state.set_fltk_image(&mut preview_frame)?;
+                    app::redraw();
                 }
                 Message::BleachbypassToggle => {
                     if bleachbypass_controls.active() {
                         bleachbypass_controls.deactivate();
                         bleachbypass_active.set_checked(false);
                         input_state.reset_bleachbypass();
+                        data_state.reset_thumbnail();
                     } else {
                         bleachbypass_controls.activate();
                         bleachbypass_active.set_checked(true);
@@ -316,37 +372,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             &slider_bleachbypass_alpha,
                         );
                     };
-                    if let Some(thumbnail) = &thumbnail {
-                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
-                        app::redraw();
-                    }
+                    data_state.process_thumbnail(&input_state);
+                    data_state.set_fltk_image(&mut preview_frame)?;
+                    app::redraw();
                 }
                 Message::BleachbypassChange => {
-                    if let Some(thumbnail) = &thumbnail {
-                        input_state.set_bleachbypass(
-                            &slider_bleachbypass_blur,
-                            &slider_bleachbypass_alpha,
-                        );
-                        draw_image(thumbnail, &mut preview_frame, &input_state)?;
-                        app::redraw();
-                    }
+                    input_state
+                        .set_bleachbypass(&slider_bleachbypass_blur, &slider_bleachbypass_alpha);
+                    data_state.process_thumbnail(&input_state);
+                    data_state.set_fltk_image(&mut preview_frame)?;
+                    app::redraw();
                 }
             }
         }
     }
-
-    Ok(())
-}
-
-fn draw_image(
-    thumbnail: &DynamicImage,
-    frame: &mut Frame,
-    input_state: &InputState,
-) -> Result<(), FltkError> {
-    let preview = process_image(thumbnail, input_state, 400, true);
-    let (w, h) = preview.dimensions();
-    let fltk_img = fl_image::RgbImage::new(&preview, w as i32, h as i32, ColorDepth::Rgb8)?;
-    frame.set_image(Some(fltk_img));
 
     Ok(())
 }
