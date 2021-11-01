@@ -1,6 +1,6 @@
 [package]
 name = "retro_filter"
-version = "0.0.1"
+version = "0.1.1"
 authors = ["Michael Ebert-Hanke <michael@ebert-hanke.de>"]
 repository = "https://gitlab.com/ebert-hanke/retrofilter"
 license = "GPL-3.0-or-later"
