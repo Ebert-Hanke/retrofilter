@@ -41,12 +41,14 @@ pub fn create_vignette(
     buffer
 }
 
+#[allow(clippy::redundant_closure)]
 fn gradient_noise(buffer: &mut ImageBuffer<Rgb<u8>, Vec<u8>>) {
     use rand::prelude::*;
     use rayon::prelude::*;
 
     // optionally add noise to gradient in order to break up banding artefacts
     buffer.par_iter_mut().for_each_init(
+        // clippy warns but it seems to be necessary to do like this according to rayon
         || rand::thread_rng(),
         |rng, p| {
             if *p != 0 && *p != 255 {
