@@ -6,6 +6,10 @@ repository = "https://gitlab.com/ebert-hanke/retrofilter"
 license = "GPL-3.0-or-later"
 edition = "2021"
 
+[[bin]]
+name = "retrofilter"
+path = "src/mair.rs"
+
 [dependencies]
 fltk = "^1.2"
 fltk-theme = "0.4"
