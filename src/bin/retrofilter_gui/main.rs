@@ -103,14 +103,6 @@ impl DataState {
             save_button.activate();
         });
     }
-    // fn set_image_processed(&mut self, image_processed: ImageBuffer<Rgb<u8>, Vec<u8>>) {
-    //     let mut processed = self.image_processed.lock().unwrap();
-    //     *processed = Some(image_processed);
-    // }
-    // fn reset_image_processed(&mut self) {
-    //     let mut processed = self.image_processed.lock().unwrap();
-    //     *processed = None;
-    // }
     fn set_fltk_image(&mut self, frame: &mut Frame) -> Result<(), FltkError> {
         if let Some(thumbnail) = &self.image_thumbnail {
             let (w, h) = thumbnail.dimensions();
