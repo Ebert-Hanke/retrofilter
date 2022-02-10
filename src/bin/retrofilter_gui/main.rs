@@ -37,11 +37,13 @@ pub enum Message {
     BleachbypassToggle,
 }
 
+#[allow(clippy::type_complexity)]
 #[derive(Debug, Clone)]
 struct DataState {
     image_data: Option<DynamicImage>,
     preview_size: u32,
     image_thumbnail: Option<DynamicImage>,
+    // Todo: Change this to type definition at some point
     image_processed: Arc<Mutex<Option<ImageBuffer<Rgb<u8>, Vec<u8>>>>>,
 }
 impl DataState {
