@@ -62,6 +62,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+          
   test_suite:
     name: Test Suite
     strategy:
@@ -79,14 +80,14 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
-
-      - uses: Swatinem/rust-cache@v1
+          
+     - uses: Swatinem/rust-cache@v1
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
           command: test
-
+          
   lints:
     name: Lints
     runs-on: ubuntu-latest
