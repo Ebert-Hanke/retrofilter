@@ -1,0 +1,162 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+jobs:
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Update package list
+        run: sudo apt-get update
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Install OpenSSL
+        run: sudo apt-get install openssl libssl-dev -y
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+
+      - name: Compress
+        run: tar -zcvf retrofilter.tar.gz -C target/release retrofilter
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: retrofilter.tar.gz
+          asset_name: retrofilter-linux-amd64.tar.gz
+          tag: ${{ github.ref }}
+          
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args:  --release
+          
+      - name: Compress
+        run: 7z a -tzip retrofilter.zip ./target/release/retrofilter
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: retrofilter.zip
+          asset_name: retrofilter-macos-x86_64.zip
+          tag: ${{ github.ref }}
+
+  macos_arm:
+    name: macOS aarch64
+    runs-on: macos-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain for arm
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: aarch64-apple-darwin
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args:  --release --target aarch64-apple-darwin
+          
+      - name: Compress
+        run: 7z a -tzip retrofilter.zip ./target/aarch64-apple-darwin/release/retrofilter
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: retrofilter.zip
+          asset_name: retrofilter-macos-arm64.zip
+          tag: ${{ github.ref }}
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+
+      - name: Compress
+        run: powershell Compress-Archive target/release/retrofilter.exe retrofilter.zip
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: retrofilter.zip
+          asset_name: retrofilter-windows-amd64.zip
+          tag: ${{ github.ref }}
+
