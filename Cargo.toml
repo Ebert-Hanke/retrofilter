@@ -8,7 +8,7 @@ edition = "2021"
 
 [[bin]]
 name = "retrofilter"
-path = "src/main.rs"
+path = "src/bin/retrofilter_gui/main.rs"
 
 [dependencies]
 fltk = "^1.2"
